@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ManageBac Planner</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <header class="top">
+    <div class="top-row">
+      <div class="today-rate" title="今日完成 / 今日应做（今天截止 + 今日计划 + 今天已完成）">
+        <span class="label">今日完成</span>
+        <span id="todayRate" class="rate">0/0</span>
+      </div>
+      <div class="top-actions">
+        <button id="btnAdd" class="icon-btn" title="手动添加任务">＋</button>
+        <button id="btnSettings" class="icon-btn" title="设置">⚙</button>
+      </div>
+    </div>
+    <div class="top-row">
+      <button id="btnSync" class="btn">立即同步</button>
+      <button id="btnPlan" class="btn primary">规划今天</button>
+    </div>
+    <div id="syncInfo" class="muted small"></div>
+  </header>
+
+  <section id="timerBar" class="timer-bar" hidden>
+    <div class="timer-info">
+      <div class="timer-title" id="timerTitle"></div>
+      <div class="timer-clock" id="timerClock">0:00:00</div>
+    </div>
+    <div class="timer-actions">
+      <button id="timerPause" class="btn">暂停</button>
+      <button id="timerDone" class="btn primary">完成</button>
+    </div>
+  </section>
+
+  <nav class="tabs">
+    <button class="tab active" data-tab="tasks">任务</button>
+    <button class="tab" data-tab="stats">统计</button>
+  </nav>
+
+  <main id="tabTasks">
+    <section id="planSection" class="plan" hidden></section>
+    <div class="list-tools">
+      <label class="small"><input type="checkbox" id="showHidden"> 显示已忽略 / 已移除</label>
+    </div>
+    <div id="taskList"></div>
+  </main>
+
+  <main id="tabStats" hidden></main>
+
+  <!-- 添加 / 编辑任务 -->
+  <dialog id="dlgTask">
+    <form method="dialog" id="formTask">
+      <h3 id="dlgTaskTitle">添加任务</h3>
+      <label>标题<input name="title" required maxlength="200"></label>
+      <label>科目<input name="subject" list="subjectList" required maxlength="50"></label>
+      <datalist id="subjectList"></datalist>
+      <label>截止时间<input name="due" type="datetime-local" required></label>
+      <label>预计耗时（分钟，可选）<input name="est" type="number" min="5" max="300" step="1" placeholder="留空则由 AI 估算"></label>
+      <label>备注（可选）<textarea name="description" rows="3"></textarea></label>
+      <div class="dlg-actions">
+        <button type="button" class="btn danger" id="btnDeleteTask" hidden>删除</button>
+        <span class="spacer"></span>
+        <button value="cancel" formnovalidate class="btn">取消</button>
+        <button value="ok" class="btn primary">保存</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 规划今天：可用时段 -->
+  <dialog id="dlgPlan">
+    <form method="dialog" id="formPlan">
+      <h3>今天的可用时段</h3>
+      <div id="slotRows"></div>
+      <button type="button" class="btn small-btn" id="btnAddSlot">＋ 添加时段</button>
+      <div id="planError" class="error small" hidden></div>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button value="cancel" formnovalidate class="btn">取消</button>
+        <button value="ok" class="btn primary" id="btnPlanGo">生成规划</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- 完成时确认耗时 -->
+  <dialog id="dlgDone">
+    <form method="dialog" id="formDone">
+      <h3>确认实际耗时</h3>
+      <p id="doneMsg" class="small"></p>
+      <label>实际耗时（分钟）<input name="minutes" type="number" min="1" max="1440" step="1"></label>
+      <div class="dlg-actions">
+        <span class="spacer"></span>
+        <button value="skip" formnovalidate class="btn">跳过</button>
+        <button value="ok" class="btn primary">确定</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script type="module" src="sidepanel.js"></script>
+</body>
+</html>

@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ManageBac Planner 设置</title>
+  <link rel="stylesheet" href="sidepanel.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <div class="page">
+    <h1>ManageBac Planner 设置</h1>
+
+    <section class="card">
+      <h2>ManageBac 日历订阅（iCal）</h2>
+      <p class="muted small">每门课一个链接。在 ManageBac 的课程日历页找到"订阅 / Export"，复制 <code>webcal://</code> 或 <code>https://</code> 开头的链接。链接等同于密码，请勿分享。</p>
+      <table class="feeds">
+        <thead><tr><th>科目名</th><th>iCal 链接</th><th>最近同步</th><th></th></tr></thead>
+        <tbody id="feedRows"></tbody>
+      </table>
+      <div class="row-actions">
+        <button class="btn" id="btnAddFeed">＋ 添加科目</button>
+        <span class="spacer"></span>
+        <button class="btn" id="btnSyncNow">立即同步</button>
+        <button class="btn primary" id="btnSaveFeeds">保存订阅</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>DeepSeek</h2>
+      <label class="field">API key
+        <div class="inline">
+          <input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-...">
+          <button class="btn" id="btnShowKey" type="button">显示</button>
+          <button class="btn" id="btnTestKey" type="button">测试</button>
+        </div>
+      </label>
+      <p class="muted small">只保存在本机浏览器的扩展存储中，不会出现在导出文件里。</p>
+    </section>
+
+    <section class="card">
+      <h2>常规</h2>
+      <div class="grid2">
+        <label class="field">同步间隔（分钟，最少 5）
+          <input id="syncInterval" type="number" min="5" max="1440" step="1">
+        </label>
+        <label class="field">计时提醒阈值（分钟）
+          <input id="warnMinutes" type="number" min="10" max="1440" step="1">
+        </label>
+      </div>
+      <label class="field">忽略关键词（每行一个；新同步到的任务标题包含其中任一个时自动标记为"忽略"）
+        <textarea id="ignoreKeywords" rows="6"></textarea>
+      </label>
+      <div class="row-actions">
+        <span class="spacer"></span>
+        <button class="btn primary" id="btnSaveGeneral">保存</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>备份与迁移</h2>
+      <p class="muted small">导出所有任务、计时记录、规划和设置为 JSON。API key 永远不会被导出。</p>
+      <label class="check-line"><input type="checkbox" id="exportFeeds"> 导出时包含 iCal 链接（文件需妥善保管）</label>
+      <div class="row-actions">
+        <button class="btn" id="btnExport">导出 JSON</button>
+        <button class="btn" id="btnImport">导入 JSON…</button>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+      <p class="muted small">导入为合并模式：同一任务以导入文件为准，现有其他数据保留；API key 不会被改动。</p>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="options.js"></script>
+</body>
+</html>
