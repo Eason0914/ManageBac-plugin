@@ -9,18 +9,19 @@
 <body>
   <header class="top">
     <div class="top-row">
-      <div class="today-rate" title="今日完成 / 今日应做（今天截止 + 今日计划 + 今天已完成）">
-        <span class="label">今日完成</span>
-        <span id="todayRate" class="rate">0/0</span>
-      </div>
+      <h1 class="page-title">作业与截止</h1>
       <div class="top-actions">
-        <button id="btnAdd" class="icon-btn" title="手动添加任务">＋</button>
-        <button id="btnSettings" class="icon-btn" title="设置">⚙</button>
+        <button id="btnAdd" class="tool-btn" title="手动添加任务">＋</button>
+        <button id="btnSettings" class="tool-btn" title="设置">⚙</button>
       </div>
     </div>
+    <div class="today-rate" title="今日完成 / 今日应做（今天截止 + 今日计划 + 今天已完成）">
+      <span class="label">今日完成</span>
+      <span id="todayRate" class="rate">0/0</span>
+    </div>
     <div class="top-row">
-      <button id="btnSync" class="btn">立即同步</button>
-      <button id="btnPlan" class="btn primary">规划今天</button>
+      <button id="btnSync" class="btn">⟳ 立即同步</button>
+      <button id="btnPlan" class="btn primary">＋ 规划今天</button>
     </div>
     <div id="syncInfo" class="muted small"></div>
   </header>
@@ -36,15 +37,17 @@
     </div>
   </section>
 
-  <nav class="tabs">
-    <button class="tab active" data-tab="tasks">任务</button>
-    <button class="tab" data-tab="stats">统计</button>
+  <nav class="tabs-wrap">
+    <div class="tabs">
+      <button class="tab active" data-tab="tasks">任务</button>
+      <button class="tab" data-tab="stats">统计</button>
+    </div>
   </nav>
 
   <main id="tabTasks">
     <section id="planSection" class="plan" hidden></section>
     <div class="list-tools">
-      <label class="small"><input type="checkbox" id="showHidden"> 显示已忽略 / 已移除</label>
+      <label class="small"><input type="checkbox" id="showHidden"> 显示已忽略 / 已移除 / 记录前</label>
     </div>
     <div id="taskList"></div>
   </main>

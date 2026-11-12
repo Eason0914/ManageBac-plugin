@@ -1,5 +1,5 @@
 // DeepSeek 调用：估时、规划。
-import { getSettings, getAllTasks, putTasks, actualMinutes } from './storage.js';
+import { getSettings, getAllTasks, putTasks, actualMinutes, isBeforeTracking } from './storage.js';
 import { toMin, hm, dateKey } from './time.js';
 
 const ENDPOINT = 'https://api.deepseek.com/chat/completions';
@@ -63,10 +63,10 @@ function validEst(v) {
  * 返回估时的任务数；没有 key 时直接返回 0。
  */
 export async function estimatePending() {
-  const { deepseekKey } = await getSettings();
-  if (!deepseekKey) return 0;
+  const settings = await getSettings();
+  if (!settings.deepseekKey) return 0;
   const all = await getAllTasks();
-  const pending = all.filter((t) => t.status === 'todo' && t.estMinutes == null);
+  const pending = all.filter((t) => t.status === 'todo' && t.estMinutes == null && !isBeforeTracking(t, settings));
   if (!pending.length) return 0;
 
   const bySubject = {};

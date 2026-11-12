@@ -8,6 +8,8 @@
 //   feedStatus          { [subject]: { lastSync, ok, error, count } }
 //   syncState           { running, startedAt, lastSync, lastError }
 
+import { dateKey, shanghaiDate } from './time.js';
+
 const area = chrome.storage.local;
 const TASK_PREFIX = 'task:';
 const PLAN_PREFIX = 'plan:';
@@ -36,7 +38,19 @@ export async function remove(key) {
 // ---------- settings ----------
 export async function getSettings() {
   const s = await get('settings', {});
-  return { ...DEFAULT_SETTINGS, ...s };
+  const merged = { ...DEFAULT_SETTINGS, ...s };
+  // 开始记录日期：首次读取时固定为当天，此前截止的 iCal 作业视为"记录前"的历史任务
+  if (!merged.trackFrom) {
+    merged.trackFrom = dateKey();
+    await set('settings', merged);
+  }
+  return merged;
+}
+
+/** iCal 任务的截止时间早于"开始记录日期"且仍为 todo → 不算逾期、不参与规划/估时/统计 */
+export function isBeforeTracking(task, settings) {
+  if (task.source !== 'ical' || task.status !== 'todo' || !task.due || !settings?.trackFrom) return false;
+  return new Date(task.due) < shanghaiDate(settings.trackFrom);
 }
 
 export async function saveSettings(patch) {

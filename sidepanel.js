@@ -1,6 +1,6 @@
 import {
   getSettings, getAllTasks, getTask, putTask, deleteTask, newTask, get, set,
-  getPlan, savePlan, actualMinutes, sessionMinutes, isTaskKey,
+  getPlan, savePlan, actualMinutes, sessionMinutes, isTaskKey, isBeforeTracking,
 } from './src/storage.js';
 import { computeCalibration, adjustedEst, factorFor } from './src/calibration.js';
 import { startTimer, stopTimer, elapsedSeconds, getActiveTimer } from './src/timer.js';
@@ -8,7 +8,7 @@ import { planDay } from './src/ai.js';
 import {
   dateKey, hm, toMin, fmtDue, fmtMin, fmtClock, addDays, weekday, shanghaiDate,
 } from './src/time.js';
-import { h, toast, subjectHue, stripHtml } from './src/ui.js';
+import { h, toast, subjectColor, stripHtml } from './src/ui.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -77,7 +77,7 @@ function todayStats() {
   const planIds = new Set((state.plan?.blocks || []).map((b) => b.taskId));
   const ids = new Set();
   for (const t of state.tasks) {
-    if (t.status === 'ignored' || t.status === 'removed') continue;
+    if (t.status === 'ignored' || t.status === 'removed' || isBeforeTracking(t, state.settings)) continue;
     const dueToday = t.due && dateKey(t.due) === today;
     const doneToday = t.status === 'done' && t.doneAt && dateKey(t.doneAt) === today;
     if (dueToday || doneToday || planIds.has(t.id)) ids.add(t.id);
@@ -153,17 +153,17 @@ function renderPlan() {
     const timing = state.activeTimer?.taskId === b.taskId;
     return h('button', {
       class: `block${done ? ' done' : ''}${current ? ' current' : ''}${timing ? ' timing' : ''}`,
+      style: { '--c': t ? colorOf(t.subject) : '#98a2b3' },
       title: t && t.status === 'todo' ? '点击开始计时' : '',
       onclick: () => { if (t && t.status === 'todo') onStart(t.id); },
     },
       h('span', { class: 'block-time' }, `${b.start}–${b.end}`),
-      t ? subjectTag(t.subject) : null,
       h('span', { class: 'block-title' }, t ? t.title : '(任务已删除)'),
       timing ? h('span', { class: 'dot' }, '●') : null,
     );
   });
   const unsched = (plan.unscheduled || []).map(taskById).filter(Boolean);
-  sec.replaceChildren(
+  sec.replaceChildren(...[
     h('div', { class: 'plan-head' },
       h('strong', {}, '今日计划'),
       h('span', { class: 'muted small' }, plan.availableSlots.map((s) => `${s.start}–${s.end}`).join('，')),
@@ -174,7 +174,7 @@ function renderPlan() {
     unsched.length
       ? h('div', { class: 'small unsched' }, '未排入：', unsched.map((t) => t.title).join('；'))
       : null,
-  );
+  ].filter(Boolean));
 }
 
 // ---------- 任务列表 ----------
@@ -186,7 +186,7 @@ function groupTasks() {
   const weekAgo = Date.now() - 7 * 86400000;
   const g = { overdue: [], today: [], week: [], later: [], done: [], hidden: [] };
   for (const t of state.tasks) {
-    if (t.status === 'ignored' || t.status === 'removed') {
+    if (t.status === 'ignored' || t.status === 'removed' || isBeforeTracking(t, state.settings)) {
       if (state.showHidden) g.hidden.push(t);
       continue;
     }
@@ -208,9 +208,10 @@ function groupTasks() {
   return g;
 }
 
+const colorOf = (subject) => subjectColor(subject, state.settings.feeds);
+
 function subjectTag(subject) {
-  const hue = subjectHue(subject);
-  return h('span', { class: 'subj', style: { '--h': hue } }, subject || '未分类');
+  return h('span', { class: 'subj', style: { '--c': colorOf(subject) } }, subject || '未分类');
 }
 
 function estLabel(t) {
@@ -229,8 +230,9 @@ function estLabel(t) {
 function taskRow(t) {
   const timing = state.activeTimer?.taskId === t.id;
   const done = t.status === 'done';
-  const hidden = t.status === 'ignored' || t.status === 'removed';
-  const overdue = t.status === 'todo' && t.due && new Date(t.due) < new Date();
+  const pre = isBeforeTracking(t, state.settings);
+  const hidden = t.status === 'ignored' || t.status === 'removed' || pre;
+  const overdue = t.status === 'todo' && !pre && t.due && new Date(t.due) < new Date();
 
   const menuOpen = state.menus.has(t.id);
   const expanded = state.expanded.has(t.id);
@@ -243,18 +245,20 @@ function taskRow(t) {
   if (t.source === 'manual') actions.push(h('button', { class: 'link', onclick: () => openTaskDialog(t) }, '编辑'));
   actions.push(h('button', { class: 'link', onclick: () => editActual(t) }, '修改耗时'));
 
-  return h('div', { class: `task${done ? ' done' : ''}${timing ? ' timing' : ''}${hidden ? ' hidden-task' : ''}` },
+  return h('div', {
+    class: `task${done ? ' done' : ''}${timing ? ' timing' : ''}${hidden ? ' hidden-task' : ''}`,
+    style: { '--c': colorOf(t.subject) },
+  },
     h('input', {
       type: 'checkbox', class: 'check', checked: done, title: done ? '标记为未完成' : '标记为完成',
       onchange: (e) => onCheck(t.id, e.target.checked),
     }),
     h('div', { class: 'task-body' },
-      h('div', { class: 'meta' },
-        subjectTag(t.subject),
+      h('div', { class: 'task-top' },
         h('span', { class: `due${overdue ? ' overdue' : ''}` }, fmtDue(t.due)),
-        estLabel(t),
         t.status === 'ignored' ? h('span', { class: 'badge' }, '已忽略') : null,
         t.status === 'removed' ? h('span', { class: 'badge' }, '已移除') : null,
+        pre ? h('span', { class: 'badge' }, '记录前') : null,
         t.source === 'manual' ? h('span', { class: 'badge' }, '手动') : null,
       ),
       h('div', {
@@ -263,10 +267,12 @@ function taskRow(t) {
         onclick: () => { if (!desc) return; toggleSet(state.expanded, t.id); render(); },
       }, t.title),
       expanded && desc ? h('div', { class: 'desc' }, desc) : null,
-      h('div', { class: 'meta2' },
+      h('div', { class: 'task-sub' },
+        subjectTag(t.subject),
+        estLabel(t),
         h('span', { class: 'elapsed', dataset: { elapsed: t.id } }),
         done && t.manualMinutes != null && sessionMinutes(t.sessions) === 0
-          ? h('span', { class: 'muted small' }, `（手动填写 ${fmtMin(t.manualMinutes)}）`) : null,
+          ? h('span', { class: 'muted' }, `手动填写 ${fmtMin(t.manualMinutes)}`) : null,
       ),
       menuOpen ? h('div', { class: 'menu' }, actions) : null,
     ),
@@ -293,7 +299,7 @@ function renderList() {
   const list = $('taskList');
   const sections = [
     ['overdue', '逾期'], ['today', '今天'], ['week', '本周'], ['later', '以后'],
-    ['done', '近 7 天已完成'], ['hidden', '已忽略 / 已移除'],
+    ['done', '近 7 天已完成'], ['hidden', '已忽略 / 已移除 / 记录前'],
   ];
   const out = [];
   for (const [k, label] of sections) {
@@ -537,7 +543,7 @@ $('formPlan').addEventListener('submit', async (e) => {
   }
   await set('lastSlots', slots);
   const todo = state.tasks
-    .filter((t) => t.status === 'todo')
+    .filter((t) => t.status === 'todo' && !isBeforeTracking(t, state.settings))
     .sort((a, b) => (a.due || '9999').localeCompare(b.due || '9999'))
     .slice(0, 60)
     .map((t) => ({

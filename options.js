@@ -149,6 +149,7 @@ async function renderGeneral() {
   $('key').value = s.deepseekKey || '';
   $('syncInterval').value = s.syncIntervalMinutes;
   $('warnMinutes').value = s.timerWarnMinutes;
+  $('trackFrom').value = s.trackFrom;
   $('ignoreKeywords').value = (s.ignoreKeywords || []).join('\n');
 }
 
@@ -157,8 +158,10 @@ $('btnSaveGeneral').addEventListener('click', async () => {
   const wm = Math.round(Number($('warnMinutes').value));
   if (!(si >= 5 && si <= 1440)) return toast('同步间隔需在 5–1440 分钟之间', { error: true });
   if (!(wm >= 10 && wm <= 1440)) return toast('计时提醒阈值需在 10–1440 分钟之间', { error: true });
+  const trackFrom = $('trackFrom').value;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(trackFrom)) return toast('请填写开始记录日期', { error: true });
   const kws = $('ignoreKeywords').value.split(/\n|,|，/).map((x) => x.trim()).filter(Boolean);
-  await saveSettings({ syncIntervalMinutes: si, timerWarnMinutes: wm, ignoreKeywords: kws });
+  await saveSettings({ syncIntervalMinutes: si, timerWarnMinutes: wm, ignoreKeywords: kws, trackFrom });
   toast('已保存');
 });
 

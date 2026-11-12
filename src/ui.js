@@ -6,7 +6,12 @@ export function h(tag, attrs = {}, ...children) {
   for (const [k, v] of Object.entries(attrs || {})) {
     if (v == null || v === false) continue;
     if (k === 'class') el.className = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(el.style, v);
+    else if (k === 'style' && typeof v === 'object') {
+      for (const [p, val] of Object.entries(v)) {
+        if (p.startsWith('--')) el.style.setProperty(p, val);
+        else el.style[p] = val;
+      }
+    }
     else if (k.startsWith('on') && typeof v === 'function') el.addEventListener(k.slice(2), v);
     else if (k === 'dataset') Object.assign(el.dataset, v);
     else if (v === true) el.setAttribute(k, '');
@@ -30,11 +35,19 @@ export function toast(msg, { error = false, ms = 3500 } = {}) {
   toastTimer = setTimeout(() => { el.hidden = true; }, ms);
 }
 
-/** 科目 → 稳定的颜色 */
-export function subjectHue(s) {
+// ManageBac 日历风格的课程配色
+export const SUBJECT_COLORS = [
+  '#1e88e5', '#0b7d3e', '#e53935', '#9ccc65', '#fbc02d',
+  '#8e24aa', '#fb8c00', '#00897b', '#3949ab', '#d81b60',
+];
+
+/** 科目 → 稳定的颜色：按设置中 feed 的顺序分配，其余按名称哈希 */
+export function subjectColor(subject, feeds = []) {
+  const i = feeds.findIndex((f) => f.subject === subject);
+  if (i >= 0) return SUBJECT_COLORS[i % SUBJECT_COLORS.length];
   let x = 0;
-  for (const ch of String(s || '')) x = (x * 31 + ch.codePointAt(0)) >>> 0;
-  return x % 360;
+  for (const ch of String(subject || '')) x = (x * 31 + ch.codePointAt(0)) >>> 0;
+  return SUBJECT_COLORS[x % SUBJECT_COLORS.length];
 }
 
 export function stripHtml(s) {

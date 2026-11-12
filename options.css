@@ -11,9 +11,11 @@ code { background: var(--bg); padding: 0 4px; border-radius: 4px; }
 .feeds td:nth-child(3) { width: 26%; font-size: 12px; }
 .feeds td:nth-child(4) { width: 36px; }
 .feeds input, .field input, .field textarea {
-  width: 100%; border: 1px solid var(--border); border-radius: 6px;
-  padding: 6px 8px; background: var(--bg); color: var(--text);
+  width: 100%; border: 1px solid var(--border-strong); border-radius: 6px;
+  padding: 7px 9px; background: var(--card); color: var(--text);
 }
+.feeds input:focus, .field input:focus, .field textarea:focus { outline: 2px solid var(--primary-soft); border-color: var(--primary); }
+h1 { font-weight: 600; }
 .feed-status.ok { color: #16a34a; }
 .feed-status.err { color: var(--danger); word-break: break-word; }
 
