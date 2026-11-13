@@ -19,6 +19,7 @@ export const DEFAULT_SETTINGS = {
   deepseekKey: '',
   syncIntervalMinutes: 120,
   timerWarnMinutes: 180,
+  planReminders: true,         // 今日计划时间块开始/结束时提醒
   ignoreKeywords: ['课堂纪律', '课堂表现', '出勤', '小组活动', '耐力与体能', '技术', '理论'],
 };
 

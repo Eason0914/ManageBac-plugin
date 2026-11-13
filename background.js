@@ -3,6 +3,10 @@ import { syncAll } from './src/sync.js';
 import { estimatePending } from './src/ai.js';
 import { getSettings, get, set, getTask } from './src/storage.js';
 import { badgeText } from './src/timer.js';
+import {
+  scheduleReminders, handleReminderAlarm, handleReminderButton, handleReminderClick,
+} from './src/reminders.js';
+import { dateKey } from './src/time.js';
 
 const SYNC_ALARM = 'sync';
 const TICK_ALARM = 'timerTick';
@@ -74,31 +78,41 @@ chrome.runtime.onInstalled.addListener(async () => {
   if (!s) await set('settings', await getSettings()); // 写入默认设置
   await scheduleSync();
   await refreshBadge();
+  await scheduleReminders();
   runSync().catch(() => {});
 });
 
 chrome.runtime.onStartup.addListener(async () => {
   await scheduleSync();
   await refreshBadge();
+  await scheduleReminders();
   runSync().catch(() => {});
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === SYNC_ALARM) runSync().catch(() => {});
   else if (alarm.name === TICK_ALARM) refreshBadge();
+  else handleReminderAlarm(alarm.name).catch(() => {});
 });
 
 chrome.storage.onChanged.addListener((changes, area) => {
   if (area !== 'local') return;
   if (changes.activeTimer) refreshBadge();
+  if (changes['plan:' + dateKey()]) scheduleReminders().catch(() => {});
   if (changes.settings) {
     const o = changes.settings.oldValue || {}, n = changes.settings.newValue || {};
     if (o.syncIntervalMinutes !== n.syncIntervalMinutes) scheduleSync();
+    if (o.planReminders !== n.planReminders) scheduleReminders().catch(() => {});
   }
 });
 
 chrome.notifications.onClicked.addListener((id) => {
   if (id === 'timerWarn') chrome.notifications.clear(id);
+  else handleReminderClick(id).catch(() => {});
+});
+
+chrome.notifications.onButtonClicked.addListener((id, buttonIndex) => {
+  handleReminderButton(id, buttonIndex).catch(() => {});
 });
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {

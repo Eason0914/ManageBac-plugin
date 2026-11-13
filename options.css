@@ -33,3 +33,4 @@ h1 { font-weight: 600; }
   .feeds td { width: auto !important; }
   .feeds td:nth-child(2), .feeds td:nth-child(3) { grid-column: 1; }
 }
+.field-check { margin-bottom: 12px; color: var(--text); }

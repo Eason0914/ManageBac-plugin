@@ -151,6 +151,7 @@ async function renderGeneral() {
   $('syncInterval').value = s.syncIntervalMinutes;
   $('warnMinutes').value = s.timerWarnMinutes;
   $('trackFrom').value = s.trackFrom;
+  $('planReminders').checked = s.planReminders !== false;
   $('ignoreKeywords').value = (s.ignoreKeywords || []).join('\n');
 }
 
@@ -162,7 +163,7 @@ $('btnSaveGeneral').addEventListener('click', async () => {
   const trackFrom = $('trackFrom').value;
   if (!/^\d{4}-\d{2}-\d{2}$/.test(trackFrom)) return toast('请填写开始记录日期', { error: true });
   const kws = $('ignoreKeywords').value.split(/\n|,|，/).map((x) => x.trim()).filter(Boolean);
-  await saveSettings({ syncIntervalMinutes: si, timerWarnMinutes: wm, ignoreKeywords: kws, trackFrom });
+  await saveSettings({ syncIntervalMinutes: si, timerWarnMinutes: wm, ignoreKeywords: kws, trackFrom, planReminders: $('planReminders').checked });
   toast('已保存');
 });
 
