@@ -9,6 +9,9 @@ import {
   dateKey, hm, toMin, fmtDue, fmtMin, fmtClock, addDays, weekday, shanghaiDate,
 } from './src/time.js';
 import { h, toast, subjectColor, stripHtml } from './src/ui.js';
+import {
+  accuracyByWeek, biggestMisses, subjectTime, onTimeStats, fmtLead,
+} from './src/stats.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -24,6 +27,7 @@ const state = {
   expanded: new Set(), // 展开描述的任务
   menus: new Set(),    // 展开操作菜单的任务
   syncing: false,
+  statsRange: 7,   // 统计区间：7 或 30 天
 };
 
 const taskById = (id) => state.tasks.find((t) => t.id === id);
@@ -364,9 +368,9 @@ async function onCheck(id, checked) {
   const actual = actualMinutes(t);
   if (lastMin > warn || actual === 0) {
     const msg = actual === 0
-      ? '这个任务没有计时记录。请填写大约用了多少分钟（可跳过）。'
+      ? '做了大约多久？点一个快捷选项，或填写分钟数。'
       : `本次计时 ${fmtMin(lastMin)}，超过了 ${fmtMin(warn)}，是否忘记停止？可修改总耗时。`;
-    const value = await askMinutes(msg, actual > 0 ? Math.round(actual) : '');
+    const value = await askMinutes(msg, actual > 0 ? Math.round(actual) : '', adjustedEst(t, state.calib));
     if (value != null) applyActual(t, value);
   }
   t.status = 'done';
@@ -407,12 +411,20 @@ async function editActual(t) {
   scheduleRefresh();
 }
 
-function askMinutes(msg, prefill) {
+const QUICK_MINUTES = [15, 30, 45, 60, 90, 120];
+
+function askMinutes(msg, prefill, est = null) {
   return new Promise((resolve) => {
     const dlg = $('dlgDone');
     const form = $('formDone');
     $('doneMsg').textContent = msg;
     form.minutes.value = prefill;
+    // 快捷选项：点一下即确认
+    const pick = (m) => { form.minutes.value = m; dlg.close('ok'); };
+    const chips = [];
+    if (est > 0) chips.push(h('button', { type: 'button', class: 'chip est-chip', onclick: () => pick(est) }, `≈ 预计 ${fmtMin(est)}`));
+    for (const m of QUICK_MINUTES) chips.push(h('button', { type: 'button', class: 'chip', onclick: () => pick(m) }, fmtMin(m)));
+    $('quickPicks').replaceChildren(...chips);
     dlg.returnValue = '';
     dlg.onclose = () => {
       const v = Math.round(Number(form.minutes.value));
@@ -633,6 +645,10 @@ async function renderStats() {
       ),
     ),
     h('section', { class: 'card' }, h('h2', {}, '近 7 天完成数'), chart),
+    accuracyCard(),
+    rangeSwitch(),
+    subjectTimeCard(),
+    onTimeCard(),
     h('section', { class: 'card' },
       h('h2', {}, '按科目校准'),
       h('table', { class: 'calib' },
@@ -641,6 +657,96 @@ async function renderStats() {
       ),
       h('p', { class: 'muted small' }, '系数 = 实际耗时 ÷ AI 估算 的中位数；样本少于 3 条时为 1，范围 0.5–3。'),
     ),
+  );
+}
+
+// ---------- 统计 1：估时准确度 ----------
+
+function accuracyCard() {
+  const weeks = accuracyByWeek(state.tasks, 8);
+  const maxY = Math.max(2, Math.min(3, ...weeks.map((w) => w.median || 0)));
+  const pct = (v) => `${(Math.min(v, maxY) / maxY) * 100}%`;
+  const hasData = weeks.some((w) => w.n);
+  const chart = h('div', { class: 'bars acc-chart' },
+    weeks.map((w) => {
+      const good = w.median != null && w.median >= 0.8 && w.median <= 1.25;
+      const [, mo, da] = w.week.split('-');
+      return h('div', { class: 'bar-col', title: w.n ? `${w.week} 起一周：中位数 ×${w.median.toFixed(2)}（${w.n} 项）` : `${w.week} 起一周：无数据` },
+        h('div', { class: 'bar-n' }, w.median != null ? `×${w.median.toFixed(1)}` : ''),
+        h('div', { class: 'bar-track' },
+          h('div', { class: 'ref', style: { bottom: pct(1) } }),
+          w.median != null ? h('div', { class: `bar ${good ? 'good' : 'off'}`, style: { height: pct(w.median) } }) : null),
+        h('div', { class: 'bar-label' }, `${+mo}/${+da}`),
+      );
+    }),
+  );
+  const misses = biggestMisses(state.tasks, 30, 5);
+  return h('section', { class: 'card' },
+    h('h2', {}, '估时准确度'),
+    h('p', { class: 'muted small card-sub' }, '每周"实际耗时 ÷ AI 估算"的中位数。虚线为 ×1.0（估得刚好），蓝色表示 0.8–1.25 之间，橙色表示偏差较大；大于 1 是低估。'),
+    hasData ? chart : h('div', { class: 'muted small' }, '还没有足够数据：完成任务并记录耗时后会出现。'),
+    misses.length ? h('div', { class: 'misses' },
+      h('div', { class: 'mini-title' }, '近 30 天偏差最大'),
+      misses.map((m) => h('div', { class: 'miss' },
+        subjectTag(m.task.subject),
+        h('span', { class: 'miss-title' }, m.task.title),
+        h('span', { class: 'miss-v' }, `${fmtMin(m.est)} → ${fmtMin(m.actual)}`),
+        h('span', { class: `miss-r ${m.ratio > 1 ? 'under' : 'over'}` }, `×${m.ratio.toFixed(1)}`),
+      ))) : null,
+  );
+}
+
+function rangeSwitch() {
+  return h('div', { class: 'range-row' },
+    h('span', { class: 'muted small' }, '以下统计区间'),
+    h('div', { class: 'tabs' }, [7, 30].map((d) => h('button', {
+      class: 'tab' + (state.statsRange === d ? ' active' : ''),
+      onclick: () => { state.statsRange = d; render(); },
+    }, `近 ${d} 天`))),
+  );
+}
+
+// ---------- 统计 2：各科时间投入 ----------
+
+function subjectTimeCard() {
+  const rows = subjectTime(state.tasks, state.statsRange, state.activeTimer);
+  const total = rows.reduce((a, r) => a + r.minutes, 0);
+  const max = Math.max(1, ...rows.map((r) => r.minutes));
+  return h('section', { class: 'card' },
+    h('h2', {}, '各科时间投入', h('span', { class: 'h2-aside' }, `共 ${fmtMin(total)}`)),
+    rows.length ? h('div', { class: 'st-rows' }, rows.map((r) => h('div', { class: 'st-row' },
+      h('div', { class: 'st-head' },
+        subjectTag(r.subject),
+        h('span', { class: 'st-v' }, `${fmtMin(r.minutes)}`, h('span', { class: 'muted' }, ` · ${Math.round((r.minutes / total) * 100)}%`)),
+      ),
+      h('div', { class: 'st-track' }, h('div', { class: 'st-bar', style: { width: `${(r.minutes / max) * 100}%`, '--c': colorOf(r.subject) } })),
+      h('div', { class: 'muted small' }, r.done ? `完成 ${r.done} 项 · 平均每项 ${fmtMin(r.doneMinutes / r.done)}` : '本区间没有完成的任务'),
+    ))) : h('div', { class: 'muted small' }, '本区间还没有耗时记录。'),
+  );
+}
+
+// ---------- 统计 3：按时完成率 ----------
+
+function onTimeCard() {
+  const s = onTimeStats(state.tasks, state.statsRange);
+  const pct = (r) => (r == null ? '—' : `${Math.round(r * 100)}%`);
+  return h('section', { class: 'card' },
+    h('h2', {}, '按时完成率'),
+    s.total ? h('div', {},
+      h('div', { class: 'kpis two' },
+        h('div', { class: 'kpi' }, h('div', { class: 'kpi-v' }, pct(s.rate)), h('div', { class: 'kpi-l' }, `${s.onTime}/${s.total} 项在截止前完成`)),
+        h('div', { class: 'kpi' }, h('div', { class: 'kpi-v' }, fmtLead(s.avgLeadMs)), h('div', { class: 'kpi-l' }, '平均提前')),
+      ),
+      h('table', { class: 'calib' },
+        h('thead', {}, h('tr', {}, h('th', {}, '科目'), h('th', { class: 'num' }, '按时率'), h('th', { class: 'num' }, '项数'), h('th', { class: 'num' }, '平均提前'))),
+        h('tbody', {}, s.bySubject.map((r) => h('tr', {},
+          h('td', {}, subjectTag(r.subject)),
+          h('td', { class: 'num' + (r.rate != null && r.rate < 0.8 ? ' warn' : '') }, pct(r.rate)),
+          h('td', { class: 'num' }, r.total),
+          h('td', { class: 'num muted' }, fmtLead(r.avgLeadMs)),
+        ))),
+      ),
+    ) : h('div', { class: 'muted small' }, '本区间还没有带截止时间的已完成任务。'),
   );
 }
 

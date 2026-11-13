@@ -244,3 +244,38 @@ dialog input:focus, dialog textarea:focus { outline: 2px solid var(--primary-sof
   box-shadow: 0 8px 20px rgb(16 24 40 / .25);
 }
 .toast.error { background: #b42318; }
+
+/* 完成弹窗快捷选项 */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+.chip {
+  border: 1px solid var(--border-strong); background: var(--card); border-radius: 16px;
+  padding: 5px 12px; font-weight: 500;
+}
+.chip:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+.chip.est-chip { border-color: var(--primary); color: var(--primary); }
+
+/* 统计：新增卡片 */
+.card-sub { margin: -4px 0 10px; }
+.card h2 { display: flex; align-items: baseline; gap: 8px; }
+.h2-aside { margin-left: auto; font-size: 12px; font-weight: 500; color: var(--muted); }
+.acc-chart .bar-track { position: relative; }
+.acc-chart .bar.good { background: var(--primary); }
+.acc-chart .bar.off { background: #f79009; }
+.acc-chart .ref { position: absolute; left: -3px; right: -3px; border-top: 1px dashed var(--muted); z-index: 1; pointer-events: none; }
+.mini-title { font-size: 12px; font-weight: 600; margin: 12px 0 6px; }
+.miss { display: flex; align-items: center; gap: 6px; padding: 5px 0; border-top: 1px solid var(--border); font-size: 12px; }
+.miss .subj { font-size: 11px; }
+.miss-title { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; }
+.miss-v { color: var(--muted); white-space: nowrap; }
+.miss-r { font-weight: 700; white-space: nowrap; }
+.miss-r.under { color: #d92d20; }
+.miss-r.over { color: #0b7d3e; }
+.range-row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 10px; }
+.range-row .tab { padding: 4px 12px; font-size: 12px; }
+.st-rows { display: flex; flex-direction: column; gap: 10px; }
+.st-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 12px; }
+.st-v { font-weight: 600; white-space: nowrap; }
+.st-track { height: 8px; background: var(--event); border-radius: 4px; margin: 4px 0 2px; overflow: hidden; }
+.st-bar { --c: var(--primary); height: 100%; background: var(--c); border-radius: 4px; }
+.kpis.two { grid-template-columns: repeat(2, 1fr); margin-bottom: 8px; }
+td.warn { color: #d92d20; font-weight: 600; }
