@@ -105,6 +105,7 @@ $('btnSyncNow').addEventListener('click', async () => {
     else {
       const x = r.result;
       toast(`同步完成：新增 ${x.added}，更新 ${x.updated}，移除 ${x.removed}` +
+        (x.resubjected ? `，${x.resubjected} 项改归正确科目` : '') +
         (x.errors.length ? `；${x.errors.length} 个订阅失败` : ''), { error: !!x.errors.length });
     }
   } catch (e) {

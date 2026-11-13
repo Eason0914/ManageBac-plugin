@@ -61,11 +61,13 @@ export async function syncAll() {
   }
   await set('syncState', { ...state, running: true, startedAt: Date.now() });
 
-  const result = { added: 0, updated: 0, removed: 0, restored: 0, errors: [] };
+  const result = { added: 0, updated: 0, removed: 0, restored: 0, resubjected: 0, errors: [] };
   try {
     const settings = await getSettings();
     const feedStatus = (await get('feedStatus')) || {};
-    const seen = new Map(); // uid → { ev, subject }
+    // uid → { ev, subject, size }：同一作业出现在多个订阅里（例如一个"全部科目"的总订阅）时，
+    // 归到事件数最少、也就是最具体的那个订阅的科目
+    const seen = new Map();
     const okSubjects = new Set();
 
     for (const feed of settings.feeds) {
@@ -73,7 +75,10 @@ export async function syncAll() {
       const now = new Date().toISOString();
       try {
         const events = await fetchFeed(feed.url);
-        for (const ev of events) if (!seen.has(ev.uid)) seen.set(ev.uid, { ev, subject: feed.subject });
+        for (const ev of events) {
+          const prev = seen.get(ev.uid);
+          if (!prev || events.length < prev.size) seen.set(ev.uid, { ev, subject: feed.subject, size: events.length });
+        }
         okSubjects.add(feed.subject);
         feedStatus[feed.subject] = { lastSync: now, ok: true, error: null, count: events.length };
       } catch (e) {
@@ -118,6 +123,7 @@ export async function syncAll() {
       if (t.title !== ev.title) { t.title = ev.title; dirty = true; }
       if (t.description !== ev.description) { t.description = ev.description; dirty = true; }
       if (t.due !== ev.due) { t.due = ev.due; dirty = true; }
+      if (t.subject !== subject) { t.subject = subject; dirty = true; result.resubjected++; }
       if (t.status === 'removed') { t.status = 'todo'; dirty = true; result.restored++; }
       if (dirty) { changed.push(t); result.updated++; }
     }

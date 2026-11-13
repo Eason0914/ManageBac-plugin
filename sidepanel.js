@@ -667,6 +667,7 @@ $('btnSync').addEventListener('click', async () => {
     if (x.skipped) toast('已有同步在进行中');
     else {
       let msg = `同步完成：新增 ${x.added}，更新 ${x.updated}，移除 ${x.removed}`;
+      if (x.resubjected) msg += `，${x.resubjected} 项改归正确科目`;
       if (x.estimated) msg += `，估时 ${x.estimated} 项`;
       toast(msg, { error: !!x.errors.length });
       if (x.estimateError) setTimeout(() => toast('AI 估时失败：' + x.estimateError, { error: true }), 3600);
